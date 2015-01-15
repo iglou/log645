@@ -1,6 +1,5 @@
-# build an executable named myprog from myprog.c
-  all: test.c
-	  gcc -g -Wall -o test test.c
+all: hello.c
+	gcc -g -Wall -o hello hello.c
 
-  clean:
-  	$(RM) test
+	clean:
+	$(RM) hello
