@@ -4,8 +4,12 @@ void main (int argc, char *argv[]){
 	int c;
 	int p;
 	int n;
+	int i, j;
+	printf("Choix du probleme : \n");
 	scanf("%d", &c);
+	printf("Valeur de déparrt de la matrice 0 : \n");
 	scanf("%d", &p);
+	printf("Nombre d'altération : \n");
 	scanf("%d", &n);
 	printf(c);
 	printf("\n");
@@ -17,13 +21,12 @@ void main (int argc, char *argv[]){
 	if(c == 1)
 	{
 		int maxtrix[8][8];
-		int i, j;
 		for (i = 0; i < 8; i++) {
 			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
 		}
 
 		int var_k = n;
-		for (int i = 0; i < var_k; i++)
+		for (i = 0; i < var_k; i++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++) maxtrix[i][j] = maxtrix[i][j] + (i + j)*var_k;
@@ -42,13 +45,12 @@ void main (int argc, char *argv[]){
 	}
 	else{
 		int maxtrix[8][8];
-		int i, j;
 		for (i = 0; i < 8; i++) {
 			for (j = 0; j < 8; j++) maxtrix[i][j] = 3;
 		}
 
 		int var_k = 2;
-		for (int i = 0; i < var_k; i++)
+		for (i = 0; i < var_k; i++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++)
