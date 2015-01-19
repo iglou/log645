@@ -1,25 +1,25 @@
 #include <stdio.h>
 
 void main (int argc, char *argv[]){
-	int c;
+	clock_t begin, end;
+	double time_spent;
+	
+	int choix;
 	int p;
 	int n;
 	int i, j;
 	printf("Choix du probleme : \n");
-	scanf("%d", &c);
-	printf("Valeur de déparrt de la matrice 0 : \n");
+	scanf("%d", &choix);
+	printf("Valeur de départ de la matrice 0 : \n");
 	scanf("%d", &p);
 	printf("Nombre d'altération : \n");
 	scanf("%d", &n);
-	printf("%d", c);
-	printf("\n");
-	printf("%d", p);
-	printf("\n");
-	printf("%d", n);
-	printf("\n");
 	
-	if(c == 1)
+	if(choix == 1)
 	{
+		begin = clock();
+		//Début du temps
+
 		int maxtrix[8][8];
 		for (i = 0; i < 8; i++) {
 			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
@@ -48,6 +48,9 @@ void main (int argc, char *argv[]){
 
 	}
 	else{
+		begin = clock();
+		//Début du temps
+
 		int maxtrix[8][8];
 		for (i = 0; i < 8; i++) {
 			for (j = 0; j < 8; j++) maxtrix[i][j] = 3;
@@ -83,4 +86,7 @@ void main (int argc, char *argv[]){
 			printf("\n");
 		}
 	}
+	end = clock();
+	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	printf("durée d'exécution : %d\n", time_spent);
 }
