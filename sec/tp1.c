@@ -1,13 +1,14 @@
 #include <stdio.h>
+#include "sys/time.h"
 
-void main (int argc, char *argv[]){
-	clock_t begin, end;
-	double time_spent;
+void main (int argc, char *argv[]){	
+	double timeStart, timeEnd, Texec;
+	struct timeval tp;
 	
 	int choix;
 	int p;
 	int n;
-	int i, j;
+	int x, i, j;
 	printf("Choix du probleme : \n");
 	scanf("%d", &choix);
 	printf("Valeur de départ de la matrice 0 : \n");
@@ -17,21 +18,20 @@ void main (int argc, char *argv[]){
 	
 	if(choix == 1)
 	{
-		begin = clock();
-		//Début du temps
-
+		gettimeofday (&tp, NULL); // Debut du chronometre
+		timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
 		int maxtrix[8][8];
 		for (i = 0; i < 8; i++) {
 			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
 		}
 
 		int var_k = n;
-		for (i = 0; i < var_k; i++)
+		for (x = 0; x <= var_k; x++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++) {
 					usleep(1000);
-					maxtrix[i][j] = maxtrix[i][j] + (i + j)*var_k;
+					maxtrix[i][j] = maxtrix[i][j] + (i + j)*x;
 				}
 			}
 		}
@@ -48,16 +48,15 @@ void main (int argc, char *argv[]){
 
 	}
 	else{
-		begin = clock();
-		//Début du temps
-
+		gettimeofday (&tp, NULL); // Debut du chronometre
+		timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
 		int maxtrix[8][8];
 		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) maxtrix[i][j] = 3;
+			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
 		}
 
 		int var_k = n;
-		for (i = 0; i < var_k; i++)
+		for (x = 0; x <= var_k; x++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++)
@@ -65,12 +64,12 @@ void main (int argc, char *argv[]){
 					if (j == 0)
 					{
 						usleep(1000);
-						maxtrix[i][j] = maxtrix[i][j] + (i*var_k);
+						maxtrix[i][j] = maxtrix[i][j] + (i*x);
 					}
 					else
 					{
 						usleep(1000);
-						maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j - 1] * var_k;
+						maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j - 1] * x;
 					}
 				}
 			}
@@ -86,7 +85,9 @@ void main (int argc, char *argv[]){
 			printf("\n");
 		}
 	}
-	end = clock();
-	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	printf("durée d'exécution : %d\n", time_spent);
+	gettimeofday (&tp, NULL); // Fin du chronometre
+	timeEnd = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+	Texec = timeEnd - timeStart; //Temps d'execution en secondes
+
+	printf("durée d'exécution : %lf\n", Texec);
 }

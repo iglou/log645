@@ -1,5 +1,5 @@
-all: hello.c
-	gcc -g -Wall -o hello hello.c
+all: tp1.c
+	gcc -g -Wall -o tp1 tp1.c
 
 	clean:
-	$(RM) hello
+	$(RM) tp1
