@@ -11,35 +11,29 @@ int main(argc,argv)
 int argc;
 char *argv[];
 {
-    int myid, numprocs;
-    int tag,source,destination,count;
-    int buffer;
-    int p, n, x, i, j;
+    int myid, numprocs, tag;
+    int probleme, start_value, nb_iteration, x, i, j;
     MPI_Status status;
  
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);
     tag=1234;
-    source=0;
-    destination=1;
-    count=1;
-    p=3;
-    n=5;
+    probleme = atoi(argc[1]);
+    start_value = atoi(argv[2]);
+    nb_iteration = atoi(argv[3]);
 
     if(myid < 8){
-        //int *array = (int*)malloc(8*sizeof(int));
         int array[8];
-        for (i = 0; i < 8; i++) array[i] = p;
+        for (i = 0; i < 8; i++) array[i] = start_value;
 
-        for (x = 0; x <= n; x++)
+        for (x = 0; x <= nb_iteration; x++)
         {
             for (i = 0; i < 8; i++) {
                 usleep(1000);
                 array[i] = array[i] + (i + myid)*x;
             }
         }
-
         MPI_Send(&array,8,MPI_INT,8,tag,MPI_COMM_WORLD);
         //printf("processor %d  sent %d\n",myid,array[0]);
     }
