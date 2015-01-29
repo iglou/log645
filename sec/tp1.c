@@ -1,33 +1,32 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "sys/time.h"
 
+
 int main (int argc, char *argv[]){	
+	//Initialisation du chronometre
 	double timeStart, timeEnd, Texec;
 	struct timeval tp;
 	
-	int choix;
-	int p;
-	int n;
-	int x, i, j;
-	printf("Choix du probleme : \n");
-	scanf("%d", &choix);
-	printf("Valeur de départ de la matrice 0 : \n");
-	scanf("%d", &p);
-	printf("Nombre d'altération : \n");
-	scanf("%d", &n);
+	int probleme, start_value, nb_iteration, x, i, j, maxtrix[8][8];
 	
-	if(choix == 1)
+	//Initialisation des paramètres
+	probleme = atoi(argv[1]);
+    start_value = atoi(argv[2]);
+    nb_iteration = atoi(argv[3]);
+
+	//Initialisation de la matrice
+	for (i = 0; i < 8; i++) {
+		for (j = 0; j < 8; j++) maxtrix[i][j] = start_value;
+	}
+	
+	if(probleme == 1)
 	{
 		gettimeofday (&tp, NULL); // Debut du chronometre
 		timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-		int maxtrix[8][8];
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
-		}
 
-		int var_k = n;
-		for (x = 0; x <= var_k; x++)
+		for (x = 0; x <= nb_iteration; x++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++) {
@@ -36,60 +35,36 @@ int main (int argc, char *argv[]){
 				}
 			}
 		}
-
-		printf("Probleme 1 !\n");
-
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) {
-				printf("%d", maxtrix[i][j]);
-				printf("    ");
-			}
-			printf("\n");
-		}
-
 	}
-	else{
+	else if(probleme == 2){
 		gettimeofday (&tp, NULL); // Debut du chronometre
 		timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-		int maxtrix[8][8];
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) maxtrix[i][j] = p;
-		}
-
-		int var_k = n;
-		for (x = 0; x <= var_k; x++)
+		
+		for (x = 0; x <= nb_iteration; x++)
 		{
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++)
 				{
 					usleep(1000);
-					if (j == 0)
-					{
-						maxtrix[i][j] = maxtrix[i][j] + (i*x);
-					}
-					else
-					{
-						maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j - 1] * x;
-					}
+					if (j == 0)	maxtrix[i][j] = maxtrix[i][j] + (i*x);
+					else		maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j - 1] * x;
 				}
 			}
 		}
-
-		printf("Probleme 2 !\n");
-
-		for (i = 0; i < 8; i++) {
-			for (j = 0; j < 8; j++) {
-				printf("%d",maxtrix[i][j]);
-				printf("   ");
-			}
-			printf("\n");
-		}
 	}
+	else{
+		printf("Numéro de problème inexistant\n");
+	}
+	//Affichage de la matrice de fin
+	for (i = 0; i < 8; i++) {
+		for (j = 0; j < 8; j++)		printf("%d    ",maxtrix[i][j]);
+		printf("\n");
+	}
+
 	gettimeofday (&tp, NULL); // Fin du chronometre
 	timeEnd = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
 	Texec = timeEnd - timeStart; //Temps d'execution en secondes
 
 	printf("durée d'exécution : %lf\n", Texec);
-
 	return 0;
 }
