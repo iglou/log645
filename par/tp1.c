@@ -39,7 +39,6 @@ int main(int argc, char *argv[]){
                     array[i] = array[i] + (i + myid)*x;
                 }
             }
-            MPI_Send(&array,8,MPI_INT,8,tag,MPI_COMM_WORLD);
         }
 
         else if(probleme == 2){
@@ -51,11 +50,11 @@ int main(int argc, char *argv[]){
                     else        array[i] = array[i] + array[i-1] * x;
                 }
             }
-            MPI_Send(&array,8,MPI_INT,8,tag,MPI_COMM_WORLD);
         }
         else{
             printf("Numéro de problème inexistant\n");
         }
+		MPI_Send(&array,8,MPI_INT,8,tag,MPI_COMM_WORLD);
     }
     if(myid == 8){ //Le dernier processeur rassemble tous les calculs
         int matrix[8][8];
