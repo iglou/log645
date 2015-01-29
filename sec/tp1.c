@@ -61,14 +61,13 @@ void main (int argc, char *argv[]){
 			for (i = 0; i < 8; i++) {
 				for (j = 0; j < 8; j++)
 				{
+					usleep(1000);
 					if (j == 0)
 					{
-						usleep(1000);
 						maxtrix[i][j] = maxtrix[i][j] + (i*x);
 					}
 					else
 					{
-						usleep(1000);
 						maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j - 1] * x;
 					}
 				}
