@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <math.h>
+#include <unistd.h>
+#include "sys/time.h"
  
 /************************************************************
 This is a simple send/receive program in MPI
@@ -87,4 +89,5 @@ char *argv[];
     Texec = timeEnd - timeStart; //Temps d'execution en secondes
 
     printf("durée d'exécution de %d : %lf\n",myid, Texec);
+    return 0;
 }

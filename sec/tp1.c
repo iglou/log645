@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <unistd.h>
 #include "sys/time.h"
 
-void main (int argc, char *argv[]){	
+int main (int argc, char *argv[]){	
 	double timeStart, timeEnd, Texec;
 	struct timeval tp;
 	
@@ -89,4 +90,6 @@ void main (int argc, char *argv[]){
 	Texec = timeEnd - timeStart; //Temps d'execution en secondes
 
 	printf("durée d'exécution : %lf\n", Texec);
+
+	return 0;
 }
