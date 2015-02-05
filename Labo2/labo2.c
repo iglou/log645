@@ -46,27 +46,26 @@ int main(int argc, char *argv[]){
 			printf("Initializing matrices...\n");
 		}
 		/*** Initialize matrices ***/
-		#pragma omp for schedule (dynamic, chunk) 
+		#pragma omp for schedule (dynamic, chunk) collapse(2)
 		for (i=0; i < 10; i++)
 			for (j=0; j < 10; j++)
 				matrix[i][j]= start_value;
 
 		/*** Do matrix multiply sharing iterations on outer loop ***/
 		/*** Display who does which iterations for demonstration purposes ***/
-		printf("Thread %d starting matrix multiply...\n",tid);
-		#pragma omp for schedule(dynamic, chunk) 
+		#pragma omp for schedule(static,1) collapse(3)
 		for (x=1; x <= nb_iteration; x++)
-		{
-			for (i=0; i < 10; i++)    
+		{			
+			for (i=0; i < 10; i++)
 			{   
 				for (j=0; j < 10; j++)
 				{
 					spinWait(50);
 					matrix[i][j] = matrix[i][j] + i + j;
-					printf("Thread=%d did row=%d and col %d\n",tid,i,j);
 				}
 			}
 		}
+		
 	}   /*** End of parallel region ***/
 
 	/*** Print results ***/
