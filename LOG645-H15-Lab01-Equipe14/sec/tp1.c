@@ -16,6 +16,10 @@ int main (int argc, char *argv[]){
     start_value = atoi(argv[2]);
     nb_iteration = atoi(argv[3]);
 
+    printf("probleme : %d\n", probleme);
+    printf("valeur de départ de la matrice : %d\n", start_value);
+    printf("nombre d'iteration : %d\n", nb_iteration);
+
 	//Initialisation de la matrice
 	for (i = 0; i < 8; i++) {
 		for (j = 0; j < 8; j++) maxtrix[i][j] = start_value;
@@ -56,6 +60,7 @@ int main (int argc, char *argv[]){
 		printf("Numéro de problème inexistant\n");
 	}
 	//Affichage de la matrice de fin
+	printf("Matrice obtenue : \n");
 	for (i = 0; i < 8; i++) {
 		for (j = 0; j < 8; j++)		printf("%d    ",maxtrix[i][j]);
 		printf("\n");
