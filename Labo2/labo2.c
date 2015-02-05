@@ -29,14 +29,14 @@ int main(int argc, char *argv[]){
     gettimeofday (&tp, NULL); // Debut du chronometre
     timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
 	
-    int	tid, nthreads, i, j, k, chunk, x;
+    int	tid, nthreads, i, j, chunk, x;
 	
 	int matrix[10][10];
 	
 	chunk = 10;                    /* set loop iteration chunk size */
 
 	/*** Spawn a parallel region explicitly scoping all variables ***/
-	#pragma omp parallel shared(matrix,nthreads,chunk) private(tid,i,j,k,x)
+	#pragma omp parallel shared(matrix,nthreads,chunk,x,i) private(tid,j)
 	{
 		tid = omp_get_thread_num();
 		if (tid == 0)
@@ -54,16 +54,16 @@ int main(int argc, char *argv[]){
 		/*** Do matrix multiply sharing iterations on outer loop ***/
 		/*** Display who does which iterations for demonstration purposes ***/
 		printf("Thread %d starting matrix multiply...\n",tid);
-		#pragma omp for schedule (dynamic, chunk)
+		#pragma omp for schedule(dynamic, chunk) 
 		for (x=1; x <= nb_iteration; x++)
 		{
 			for (i=0; i < 10; i++)    
-			{
-				printf("Thread=%d did row=%d\n",tid,i);   
+			{   
 				for (j=0; j < 10; j++)
 				{
 					spinWait(50);
 					matrix[i][j] = matrix[i][j] + i + j;
+					printf("Thread=%d did row=%d and col %d\n",tid,i,j);
 				}
 			}
 		}
