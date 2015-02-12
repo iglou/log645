@@ -63,11 +63,9 @@ int main (int argc, char *argv[]) {
       gettimeofday (&tp, NULL); // Debut du chronometre
       timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
       
-      for (x = 1; x <= nb_iteration; x++)
-      {
+      for (x = 1; x <= nb_iteration; x++){
         for (i = 0; i < 10; i++) {
-          for (j = 9; j >= 0; j--)
-          {
+          for (j = 9; j >= 0; j--){
             spinWait(50);
             if (j == 9) maxtrix[i][j] = maxtrix[i][j] + i;
             else        maxtrix[i][j] = maxtrix[i][j] + maxtrix[i][j + 1];
