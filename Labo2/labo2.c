@@ -18,44 +18,58 @@ void spinWait(int milliseconds){
 }
 
 int main(int argc, char *argv[]){    
-  double timeStart, timeEnd, Texec;
+  //CHRONOMETRE SEQUENTIEL
+  double timeStart1, timeEnd1, Texec1;
+  //CHRONOMETRE PARALLELE
+  double timeStart2, timeEnd2, Texec2;
   struct timeval tp;
-  gettimeofday (&tp, NULL); // Debut du chronometre
-  timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-  
-  int tid, nthreads, i, j, chunk, x;
-  
-  int matrix[10][10], start_value, nb_iteration, probleme;
-  start_value = 3;
-  nb_iteration = 4;
-  probleme = 1;
+
+  int i, j, chunk, x, matrix_par[10][10], matrix_seq[10][10], start_value, nb_iteration, probleme;
 
   //Initialisation des paramètres
-    probleme = atoi(argv[1]);
-    start_value = atoi(argv[2]);
-    nb_iteration = atoi(argv[3]);
-  
-  chunk = 10;                    /* set loop iteration chunk size */
+  probleme = atoi(argv[1]);
+  start_value = atoi(argv[2]);
+  nb_iteration = atoi(argv[3]);
+  chunk = 10;
 
+  //Initialisation matrice en sequentiel
+  for (i = 0; i < 10; i++) {
+    for (j = 0; j < 10; j++)  matrix_seq[i][j] = start_value;
+  }
+
+  /***********************************PROBLEME1***************************************/
   if(probleme == 1){
-    /*** Spawn a parallel region explicitly scoping all variables ***/
-    #pragma omp parallel shared(matrix,nthreads,chunk,x,i) private(tid,j)
+    //SEQUENTIEL
+    gettimeofday (&tp, NULL); //Chronomètre
+    timeStart1 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+
+    for (x = 1; x <= nb_iteration; x++)
     {
-      tid = omp_get_thread_num();
-      if (tid == 0)
-      {
-        nthreads = omp_get_num_threads();
-        printf("Starting matrix multiple example with %d threads\n",nthreads);
-        printf("Initializing matrices...\n");
+      for (i = 0; i < 10; i++) {
+        for (j = 0; j < 10; j++) {
+          spinWait(50);
+          matrix_seq[i][j] = matrix_seq[i][j] + i + j;
+        }
       }
-      /*** Initialize matrices ***/
+    }
+
+    gettimeofday (&tp, NULL); // Fin du chronometre
+    timeEnd1 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    Texec1 = timeEnd1 - timeStart1;
+
+    //PARELLELE
+    gettimeofday (&tp, NULL); //Chronomètre
+    timeStart2 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+
+    #pragma omp parallel shared(matrix_par,chunk,x,i) private(j)
+    {
+      //Initialisation des matrices
       #pragma omp for schedule (dynamic, chunk) collapse(2)
       for (i=0; i < 10; i++)
         for (j=0; j < 10; j++)
-          matrix[i][j]= start_value;
+          matrix_par[i][j]= start_value;
 
-      /*** Do matrix multiply sharing iterations on outer loop ***/
-      /*** Display who does which iterations for demonstration purposes ***/
+      //Calcul de la matrice
       #pragma omp for schedule(static,1) collapse(3)
       for (x=1; x <= nb_iteration; x++)
       {     
@@ -64,68 +78,91 @@ int main(int argc, char *argv[]){
           for (j=0; j < 10; j++)
           {
             spinWait(50);
-            matrix[i][j] = matrix[i][j] + i + j;
+            matrix_par[i][j] = matrix_par[i][j] + i + j;
           }
         }
       }
-      
-    }   /*** End of parallel region ***/
+    }
+    gettimeofday (&tp, NULL); // Fin du chronometre
+    timeEnd2 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    Texec2 = timeEnd2 - timeStart2;
   }
 
+  /***********************************PROBLEME2***************************************/
   else if(probleme == 2){
-    /*** Spawn a parallel region explicitly scoping all variables ***/
-    #pragma omp parallel shared(matrix,nthreads,chunk,x,j) private(tid,i)
-    {
-      tid = omp_get_thread_num();
-      if (tid == 0)
-      {
-        nthreads = omp_get_num_threads();
-        printf("Starting matrix multiple example with %d threads\n",nthreads);
-        printf("Initializing matrices...\n");
+    //SEQUENTIEL
+    gettimeofday (&tp, NULL); // Debut du chronometre séquentiel
+    timeStart1 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+      
+    for (x = 1; x <= nb_iteration; x++){
+      for (i = 0; i < 10; i++) {
+        for (j = 9; j >= 0; j--){
+          spinWait(50);
+          if (j == 9) matrix_seq[i][j] = matrix_seq[i][j] + i;
+          else        matrix_seq[i][j] = matrix_seq[i][j] + matrix_seq[i][j + 1];
+        }
       }
-      /*** Initialize matrices ***/
+    }
+    gettimeofday (&tp, NULL); // Fin du chronometre
+    timeEnd1 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    Texec1 = timeEnd1 - timeStart1;
+
+    //PARELLELE
+    gettimeofday (&tp, NULL); //Chronomètre
+    timeStart2 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    #pragma omp parallel shared(matrix_par,chunk,x,j) private(i)
+    {
+      //Initialisation des matrices
       #pragma omp for schedule (dynamic, chunk) collapse(2)
       for (i=0; i < 10; i++)
         for (j=0; j < 10; j++)
-          matrix[i][j]= start_value;
+          matrix_par[i][j]= start_value;
 
-      /*** Do matrix multiply sharing iterations on outer loop ***/
-      /*** Display who does which iterations for demonstration purposes ***/
-      #pragma omp for schedule(static,1) collapse(2)
+      //Calcul de la matrice
+      #pragma omp for schedule(dynamic,chunk) collapse(3)
       for (x=1; x <= nb_iteration; x++)
       {
-        for (j=9; j >= 0; j--)
+        for (i=0; i < 10; i++)
         {
-          for (i=0; i < 10; i++)
+          for (j=9; j >= 0; j--)
           {
             spinWait(50);
             if(j == 9){
-              matrix[i][j]= matrix[i][j] + i;
+              matrix_par[i][j]= matrix_par[i][j] + i;
             }
             else{
-              matrix[i][j] = matrix[i][j] + matrix[i][j+1];
+              matrix_par[i][j] = matrix_par[i][j] + matrix_par[i][j+1];
             }
           }
         }
       }
-      
-    }   /*** End of parallel region ***/
+    }
+    gettimeofday (&tp, NULL); // Fin du chronometre
+    timeEnd2 = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    Texec2 = timeEnd2 - timeStart2;
   }
 
-  /*** Print results ***/
+  //RESULTAT
   printf("******************************************************\n");
-  printf("Result Matrix:\n");
+  printf("Resultat matrice en séquentiel:\n");
   for (i=0; i < 10; i++)
   {
     for (j=0; j < 10; j++) 
-      printf("%d   ", matrix[i][j]);
+      printf("%d   ", matrix_seq[i][j]);
     printf("\n"); 
   }
   printf("******************************************************\n");
-  gettimeofday (&tp, NULL); // Fin du chronometre
-  timeEnd = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-  Texec = timeEnd - timeStart; //Temps d'execution en secondes
-  printf("durée d'exécution : %lf\n", Texec);
+  printf("Resultat matrice en parallele:\n");
+  for (i=0; i < 10; i++)
+  {
+    for (j=0; j < 10; j++) 
+      printf("%d   ", matrix_par[i][j]);
+    printf("\n"); 
+  }
+  printf("******************************************************\n");
+  printf("durée d'exécution séquentiel: %lf\n", Texec1);
+  printf("durée d'exécution parallele : %lf\n", Texec2);
+  printf("******************************************************\n");
   
   return 0; 
 }
