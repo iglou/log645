@@ -28,13 +28,15 @@ int main(int argc, char *argv[]){
 	td = atoi(argv[4]);
 	h = atoi(argv[5]);
 	
-	//Initialisation matrice
-	double matrix[nb_ligne][nb_col];
-	for (i = 0; i < nb_ligne; i++) {
-		for (j = 0; j < nb_col; j++){
-			matrix[i][j] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
+	if(myid == 0){ //master
+		
+		//Initialisation matrice
+		double matrix[nb_ligne][nb_col][2];
+		for (i = 0; i < nb_ligne; i++) {
+			for (j = 0; j < nb_col; j++){
+				matrix[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
+			}
 		}
-	}
 
     //Affichage de la matrice de fin
     printf("Matrice obtenue : \n");
