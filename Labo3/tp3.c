@@ -7,8 +7,6 @@
 #define WORKTAG 1
 #define DIETAG 2
 
-
-
 int main(int argc, char *argv[]){    
     int myid, numprocs, nb_ligne, nb_col, nb_pas, td, h;
     
@@ -16,9 +14,6 @@ int main(int argc, char *argv[]){
     MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD,&numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD,&myid);
-	
-	printf("%d\n", argc);
-	fflush(stdout);
 	
 	nb_ligne = atoi(argv[1]);
     nb_col = atoi(argv[2]);
@@ -74,8 +69,6 @@ int main(int argc, char *argv[]){
 						rank ++;
 						//rank%(numprocs-1)+1
 					}
-					printf("test send \n");
-					fflush(stdout);
 					//MPI_IRecv(&matrix[i][j][(x+1)%2],1,MPI_INT,rank,MPI_ANY_TAG,MPI_COMM_WORLD,&status, &requete[(i+j)*nb_col]);
 				}
 			}
@@ -87,14 +80,11 @@ int main(int argc, char *argv[]){
         }
 	}
 	else{ //slave
-	printf("enter slave \n");
-	fflush(stdout);
 	while(1){
 			int info[3];
 			
 			MPI_Status status;
 			MPI_Recv(info,3,MPI_INT,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-			printf("test recv \n");
 			fflush(stdout);
 			if (status.MPI_TAG == DIETAG) {
                         break;
