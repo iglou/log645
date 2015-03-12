@@ -4,13 +4,15 @@
 #include <mpi.h>
 #include "sys/time.h"
 
-void mastercode (int n,int m);
-void slavecode (void);
+void mastercode (int nb_col,int nb_ligne, int np);
+void slavecode (double td, double h);
 
 int main (int argc, char *argv[])
 {
-    int nb_col, nb_ligne, x, np;
+    int nb_col, nb_ligne, np;
     double td, h;
+    double timeStart, timeEnd, Texec;
+    struct timeval tp;
 
     nb_col = 15;
     nb_ligne = 10;
@@ -23,219 +25,176 @@ int main (int argc, char *argv[])
     MPI_Comm_rank (MPI_COMM_WORLD, &rank);
     MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
 
+    printf("Entrée dans le prog principal par %d\n", rank);
+
     if (argc != 3){
         printf("Veuillez entrez le nombre correct de paramètres : 5\n");
         MPI_Finalize ();
         return 1;
     }
-
+    // Debut du chronometre
+    gettimeofday (&tp, NULL); 
+    timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
     if (rank == 0){
+        printf("Entree dans le master\n");
         mastercode (nb_col, nb_ligne, np);
     }
     else{
+        printf("Entree dans le slave\n");
         slavecode (td, h);
     }
+    gettimeofday (&tp, NULL); // Fin du chronometre
+    timeEnd = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
+    Texec = timeEnd - timeStart; //Temps d'execution en secondes
+    printf("temps dexécution : %f\n", Texec);
     MPI_Finalize ();
+
+    printf("FIN prg\n");
     return 0;
 }
 
 void mastercode (int nb_col,int nb_ligne, int np)
 {
-  int i, j;
-  long long answer;
-  int who, nprocs, rank=1;
-  int task[2];
+  int i=0, j=1, ii, jj, a=1, nprocs, rank=1, task[7], mat0=0, mat1=1;
+  double answer[3];
   MPI_Status status;
-
-  long long sum = 0;
-
   int answers_to_receive, received_answers;
-  int *counts;
-  int whomax,num;
-
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
-
-
-  /*
-   * This code is somewhat complicated. The objective is that master keeps on receiving answers and sending tasks from and
-   * to slaves. In order to end the program properly, we need to know in which state the slaves are. They can be in two states:
-   * - sending a message to master
-   * - waiting for a message from master
-   * We want to make sure, that at the end of the program all 
-   * slaves are waiting for a message from master, so master can ask them to stop.
-   *
-   * It is also important that master sends exactly the right amount
-   * of tasks to the slaves, and receives exactly the right amount of answers.
-   *
-   * There are several ways to accomplish this. In this example we present the most simple method.
-   *
-   * The slaves start in the state 'waiting for a message'.
-   * Master sends each of the slaves a task. Care has to be taken for the case that there a less tasks than slaves.
-   *
-   * When a slave is in the state 'waiting for message', it accepts two kinds of tasks: 
-   * 1 perform calculations, send result back to master and enter the 'waiting' state again
-   * 2 send the number of tasks performed to master and stop
-   *
-   * After sending the first task to the slaves, master enters a loop, receiving answers and sending
-   * new tasks, until the desired number of answers is received and taking care that not too many tasks are dispatched.
-   * Then master sends the second task ('stop' signal) to the slaves whereupon the whole machinery stops.
-   */
 
    /*Initialisation de la matrice*/
     double matrix[nb_ligne][nb_col][2];
     for (i = 0; i < nb_ligne; i++) {
         for (j = 0; j < nb_col; j++){
             matrix[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
+            matrix[i][j][1] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
         }
     }
 
-    answers_to_receive = nb_ligne*nb_col;
-    //(n-1)/m + 1;
+    answers_to_receive = nb_ligne*nb_col-2*nb_ligne-2*nb_col+4;
     received_answers = 0;
-    num = 1;
 
     /* send tasks to slaves */
-    whomax = nprocs-1;
-    if (whomax > answers_to_receive) 
-        whomax = answers_to_receive;
-
-    for (i = 0; i < nb_ligne; i++) {
-        for (j = 0; j < nb_col; j++){
-            task[0] = matrix[i][j][0];
-            task[1] = matrix[i+1][j][0];
-            task[2] = matrix[i-1][j][0];
-            task[3] = matrix[i][j+1][0];
-            task[4] = matrix[i][j-1][0];
-            MPI_Send (&task[0], 5, MPI_INT, /* sending two ints */
-              rank%(nprocs-1)+1, 1,            /* tag */
-              MPI_COMM_WORLD);      /* communicator */
-            rank++;
-        }
+    i=1;
+    j=1;
+    while(i<nb_ligne-1){
+      while(j<nb_col-1){
+        task[0] = matrix[i][j][0];
+        task[1] = matrix[i+1][j][0];
+        task[2] = matrix[i-1][j][0];
+        task[3] = matrix[i][j+1][0];
+        task[4] = matrix[i][j-1][0];
+        task[5] = i;
+        task[6] = j;
+        MPI_Send (&task[0], 7, MPI_DOUBLE, rank%(nprocs-1)+1, 1, MPI_COMM_WORLD);
+        //printf("Envoi1 cellule %d %d à rank %d\n",i, j, rank%(nprocs-1)+1);
+        if(rank == nprocs) break;
+        j++;
+        rank++;
+      }
+      if(rank == nprocs) break;
+      i++;
+      j = 1;
+    }
+    //get next cellule
+    if(j == nb_col-2){
+      i++;
+      j = 1;
+    }
+    else{
+      j++;
     }
 
-    while (received_answers < answers_to_receive)
-    {
-        /* wait for an answer from a slave. */
-
-        MPI_Recv (&answer,    /* address of receive buffer */
-            1,      /* number of items to receive */
-            MPI_LONG_LONG,  /* type of data */
-            MPI_ANY_SOURCE, /* can receive from any other */
-            1,      /* tag */
-            MPI_COMM_WORLD, /* communicator */
-            &status);   /* status  */
-
-        who = status.MPI_SOURCE; /* find out who sent us the answer */
-        
-        sum += answer;        /* update the sum */
+    while(a <= np){
+      while (received_answers < answers_to_receive){
+          /* wait for an answer from a slave. */
+        MPI_Recv (&answer[0], 3, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+        //printf("Master recoit de slave %d valeur %lld pour cellule %lld %lld\n", status.MPI_SOURCE, answer[0], answer[1], answer[2]);
+        ii = (int)(answer[1]);
+        jj = (int)(answer[2]);
+        matrix[ii][jj][mat1] = answer[0];
         received_answers++;       /* and the number of received answers */
 
-      /* put the slave on work, but only if not all tasks have been sent. We use the value of num to detect this */
-
-      if (num <= n)
-      {
-        task[0] = num;
-        task[1] = num + m - 1;
-        if (task[1] > n)
-          task[1] = n;
-
-        MPI_Send (&task[0], 4, MPI_INT, /* sending two ints */
-              who,                      /* to the lucky one */
-              1,                        /* tag */
-              MPI_COMM_WORLD);          /* communicator */
-        num += m;
+        task[0] = matrix[i][j][mat0];
+        task[1] = matrix[i+1][j][mat0];
+        task[2] = matrix[i-1][j][mat0];
+        task[3] = matrix[i][j+1][mat0];
+        task[4] = matrix[i][j-1][mat0];
+        task[5] = i;
+        task[6] = j;
+        MPI_Send (&task[0], 7, MPI_DOUBLE, status.MPI_SOURCE, 1, MPI_COMM_WORLD);
+        //printf("Envoi2 cellule %d %d à slave %d\n",i, j, rank%(nprocs-1)+1);
+        if(j == nb_col-1){
+          i++;
+          j = 1;
+        }
+        else{
+          j++;
+        }
       }
+      printf("Matrice obtenue pour np = %d: \n", a);
+        for (i = 0; i < nb_ligne; i++) {
+            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][mat1]);
+            printf("\n");
+        }
+      received_answers = 0;
+      i = 1;
+      j = 1;
+      a++;
+      if(mat0 == 0) mat0 = 1;
+      else          mat0 = 0;
+      if(mat1 == 0) mat1 = 1;
+      else          mat1 = 0;
     }
+
+    //Affichage de la matrice de fin
+    if(np%2 == 0){
+        printf("Matrice obtenue 1: \n");
+        for (i = 0; i < nb_ligne; i++) {
+            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][1]);
+                printf("\n");
+        }
+    }
+    else{
+        printf("Matrice obtenue 0: \n");
+        for (i = 0; i < nb_ligne; i++) {
+            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][0]);
+                printf("\n");
+        }
+    }
+    printf("FIN MASTER\n");
 
 //Now master sends a message to the slaves to signify that they should end the calculations. We use a special tag for that:
 
-  counts = (int*) malloc(sizeof(int)*(nprocs-1));
+  /*counts = (int*) malloc(sizeof(int)*(nprocs-1));
   for (who = 1; who < nprocs; who++)
     {
-      MPI_Send (&task[0], 1, MPI_INT,   /* sending one int 
-                     * it is permitted to send a shorter message
-                     * than will be received. The other case:
-                     * sending a longer message than the receiver
-                     * expects is not allowed. */
-        who,            /* to who */
-        2,          /* tag */
-        MPI_COMM_WORLD);    /* communicator */
-
-      /* the slave will send to master the number of calculations
-       * that have been performed. We put this number in the counts array.*/
-
-      MPI_Recv (&counts[who-1], /* address of receive buffer */
-        1,      /* number of items to receive */
-        MPI_INT,    /* type of data */
-        who,        /* receive from process who */
-        7,      /* tag */
-        MPI_COMM_WORLD, /* communicator */
-        &status);   /* status  */
+      MPI_Send (&task[0], 1, MPI_INT, who, 2, MPI_COMM_WORLD);
+      MPI_Recv (&counts[who-1], 1, MPI_INT, who, 7, MPI_COMM_WORLD, &status);
     }
 
-  printf ("The sum of the integers from 1..%d is %lld\n", n, sum);
-  printf ("The work was divided using %d summations per slave\n",m);
-
-  printf ("  SLAVE  calculations\n\n");
   for (i = 1; i < nprocs; i++)
     {
       printf ("%6d %8d\n", i, counts[i-1]);
-    }
+    }*/
 }
 
 void slavecode (double td, double h)
 {
-  int i, rank;
-  long long answer;
-  int task[2];
+  int rank;
+  double answer[3];
+  int task[5];
   MPI_Status status;
-  int count = 0;
 
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-
   /* slave first enters 'waiting for message' state*/
-  MPI_Recv (&task[0],       /* address of receive buffer */
-        2,          /* number of items to receive */
-        MPI_INT,        /* type of data */
-        0,          /* can receive from master only */
-        MPI_ANY_TAG,    /* can expect two values, so
-                     * we use the wildcard MPI_ANY_TAG 
-                     * here */
-        MPI_COMM_WORLD, /* communicator */
-        &status);       /* status  */
-
-  /* if tag equals 2, then skip the calculations */
-
-  if (status.MPI_TAG !=2)
-  {
-  while (1)
-    {
-        answer=((1-(4*td)/(h*h))*task[0])+((td/(h*h))*(task[1]+task[2]+task[3]+task[4]));
-        MPI_Send (&answer, 1, /* sending one int  */
-            MPI_LONG_LONG, 0,   /* to master */
-            1,      /* tag */
-            MPI_COMM_WORLD);    /* communicator */
-
-        MPI_Recv (&task[0],   /* address of receive buffer */
-            4,      /* number of items to receive */
-            MPI_INT,    /* type of data */
-            0,      /* can receive from master only */
-            MPI_ANY_TAG,    /* can expect two values, so
-                     * we use the wildcard MPI_ANY_TAG 
-                     * here */
-            MPI_COMM_WORLD, /* communicator */
-            &status);   /* status  */
-
-      if (status.MPI_TAG == 2)      /* leave this loop if tag equals 2 */
-    break;
-    }
+  while(1){
+    MPI_Recv (&task[0], 7, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    //printf("Slave %d recoit %d pour cellule %d %d\n", rank, task[0], task[5], task[6]);
+    usleep(5);
+    answer[0] = ((1-(4*td)/(h*h))*task[0])+((td/(h*h))*(task[1]+task[2]+task[3]+task[4]));    
+    answer[1] = task[5];
+    answer[2] = task[6];
+    MPI_Send (&answer[0], 3, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+    //printf("Slave %d envoie %lld pour cellule %lld %lld\n", rank, answer[0], answer[1], answer[2]);
   }
-  
-  /* this is the point that is reached when a task is received with tag = 2 */
-  /* send the number of calculations to master and return */
-
-  MPI_Send (&count, 1, MPI_INT, /* sending one int  */
-        0,          /* to master */
-        7,          /* tag */
-        MPI_COMM_WORLD);    /* communicator */
 }
