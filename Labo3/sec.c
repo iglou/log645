@@ -25,28 +25,28 @@ int main (int argc, char *argv[]){
     gettimeofday (&tp, NULL); 
     timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
     //Initialisation matrice
-    double matrixsec[nb_ligne][nb_col][2];
+    double matrix[nb_ligne][nb_col][2];
     for (i = 0; i < nb_ligne; i++) {
         for (j = 0; j < nb_col; j++){
-            matrixsec[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
+            matrix[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
         }
     }
     //Affichage de la matrice de départ
     printf("Matrice initiale : \n");
     for (i = 0; i < nb_ligne; i++) {
-        for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrixsecsec[i][j][0]);
+        for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][0]);
             printf("\n");
     }
 
     for(x = 1; x < np; x++){
         for(i = 1; i < nb_ligne-1; i++){
             for (j = 1; j < nb_col-1; j++){
-                usleep(50);
+                usleep(1000);
                 if(x%2 == 0){
-                    matrixsecsec[i][j][0]=((1-(4*td)/(h*h))*matrixsec[i][j][1])+((td/(h*h))*(matrixsec[i-1][j][1]+matrixsec[i+1][j][1]+matrixsec[i][j-1][1]+matrixsec[i][j+1][1]));
+                    matrix[i][j][0]=((1-(4*td)/(h*h))*matrix[i][j][1])+((td/(h*h))*(matrix[i-1][j][1]+matrix[i+1][j][1]+matrix[i][j-1][1]+matrix[i][j+1][1]));
                 }
                 else{
-                    matrixsec[i][j][1]=((1-(4*td)/(h*h))*matrixsec[i][j][0])+((td/(h*h))*(matrixsec[i-1][j][0]+matrixsec[i+1][j][0]+matrixsec[i][j-1][0]+matrixsec[i][j+1][0]));
+                    matrix[i][j][1]=((1-(4*td)/(h*h))*matrix[i][j][0])+((td/(h*h))*(matrix[i-1][j][0]+matrix[i+1][j][0]+matrix[i][j-1][0]+matrix[i][j+1][0]));
                 }
             }
         }
@@ -59,14 +59,14 @@ int main (int argc, char *argv[]){
     if(np%2 == 0){
         printf("Matrice obtenue 1: \n");
         for (i = 0; i < nb_ligne; i++) {
-            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrixsec[i][j][1]);
+            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][1]);
                 printf("\n");
         }
     }
     else{
         printf("Matrice obtenue 0: \n");
         for (i = 0; i < nb_ligne; i++) {
-            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrixsec[i][j][0]);
+            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][0]);
                 printf("\n");
         }
     }
