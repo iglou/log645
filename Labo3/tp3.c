@@ -76,14 +76,14 @@ int main(int argc, char *argv[]){
 		
 		//Affichage de la matrice de fin
 		if(nb_pas%2 == 1){
-			printf("Matrice obtenue 1: \n");
+			printf("Matrice obtenue parallele: \n");
 			for (i = 0; i < nb_ligne; i++) {
 				for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][1]);
 					printf("\n");
 				}
 		}
 		else{
-			printf("Matrice obtenue 0: \n");
+			printf("Matrice obtenue parallele: \n");
 			for (i = 0; i < nb_ligne; i++) {
 				for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][0]);
 					printf("\n");
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]){
 			
 			//printf(" Process %d Info = %.2f , %.2f , %.2f , %.2f, %.2f: \n", myid, info[0], info[1], info[2], info[3], info[4]);
 			result = ((1-(4*td)/(h*h))*info[0])+((td/(h*h))*(info[1]+info[2]+info[3]+info[4]));
-			usleep(50);
+			usleep(1000);
 			MPI_Send(&result,1,MPI_DOUBLE,0,WORKTAG,MPI_COMM_WORLD);
 		}
 	}
