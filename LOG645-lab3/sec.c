@@ -41,7 +41,7 @@ int main (int argc, char *argv[]){
     for(x = 1; x < np; x++){
         for(i = 1; i < nb_ligne-1; i++){
             for (j = 1; j < nb_col-1; j++){
-                usleep(5);
+                usleep(50);
                 if(x%2 == 0){
                     matrix[i][j][0]=((1-(4*td)/(h*h))*matrix[i][j][1])+((td/(h*h))*(matrix[i-1][j][1]+matrix[i+1][j][1]+matrix[i][j-1][1]+matrix[i][j+1][1]));
                 }
