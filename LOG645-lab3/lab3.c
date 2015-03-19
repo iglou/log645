@@ -4,116 +4,148 @@
 #include <mpi.h>
 #include "sys/time.h"
 
-void mastercode (int nb_col,int nb_ligne, int np);
+void mastercode (int nb_col,int nb_ligne, int np, double matrix[nb_ligne][nb_col][2]);
 void slavecode (double td, double h);
+void init_matrix(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]);
+void print_matrix0(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]);
+void print_matrix1(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]);
+
 
 int main (int argc, char *argv[])
 {
-    int nb_col, nb_ligne, np;
-    double td, h;
-    double timeStart, timeEnd, Texec;
-    struct timeval tp;
+  int nb_col, nb_ligne, np, rank, nprocs, i, j, x;
+  double td, h, timeStart1, timeEnd1, Texec1, timeStart2, timeEnd2, Texec2;
+  struct timeval tp1, tp2;
 
-    nb_col = 15;
-    nb_ligne = 10;
-    np = 50;
-    td = 0.0002;
-    h = 0.1;
+  //Initialisation des paramètres
+  nb_col = atoi(argv[1]);
+  nb_ligne = atoi(argv[2]);
+  np = atoi(argv[3]);
+  td = atof(argv[4]);
+  h = atof(argv[5]);
 
-    int rank, nprocs;
-    MPI_Init (&argc, &argv);
-    MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-    MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  //Initialisation MPI
+  MPI_Init (&argc, &argv);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  
 
-    printf("Entrée dans le prog principal par %d\n", rank);
+  /************************SEQUENTIEL*****************************/
+  //Initialisation de la matrice
+  double matrix[nb_ligne][nb_col][2];
+  init_matrix(nb_col, nb_ligne, matrix);
 
-    if (argc != 3){
-        printf("Veuillez entrez le nombre correct de paramètres : 5\n");
-        MPI_Finalize ();
-        return 1;
-    }
+  if(rank == 0){
+    //Affichage de la matrice initiale
+    printf("Matrice initiale séquentielle: \n");
+    print_matrix0(nb_col, nb_ligne, matrix);
+
     // Debut du chronometre
-    gettimeofday (&tp, NULL); 
-    timeStart = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-    if (rank == 0){
-        printf("Entree dans le master\n");
-        mastercode (nb_col, nb_ligne, np);
-    }
-    else{
-        printf("Entree dans le slave\n");
-        slavecode (td, h);
-    }
-    gettimeofday (&tp, NULL); // Fin du chronometre
-    timeEnd = (double) (tp.tv_sec) + (double) (tp.tv_usec) / 1e6;
-    Texec = timeEnd - timeStart; //Temps d'execution en secondes
-    printf("temps dexécution : %f\n", Texec);
-    MPI_Finalize ();
+    gettimeofday (&tp1, NULL); 
+    timeStart1 = (double) (tp1.tv_sec) + (double) (tp1.tv_usec) / 1e6;
 
-    printf("FIN prg\n");
-    return 0;
+    //Calcul séquentiel
+    for(x = 1; x < np; x++){
+      for(i = 1; i < nb_ligne-1; i++){
+        for (j = 1; j < nb_col-1; j++){
+          usleep(50);
+          if(x%2 == 0)  matrix[i][j][0]=((1-(4*td)/(h*h))*matrix[i][j][1])+((td/(h*h))*(matrix[i-1][j][1]+matrix[i+1][j][1]+matrix[i][j-1][1]+matrix[i][j+1][1]));
+          else          matrix[i][j][1]=((1-(4*td)/(h*h))*matrix[i][j][0])+((td/(h*h))*(matrix[i-1][j][0]+matrix[i+1][j][0]+matrix[i][j-1][0]+matrix[i][j+1][0]));
+        }
+      }
+    }
+
+    // Fin du chronometre
+    gettimeofday (&tp1, NULL); 
+    timeEnd1 = (double) (tp1.tv_sec) + (double) (tp1.tv_usec) / 1e6;
+    Texec1 = timeEnd1 - timeStart1; //Temps d'execution en secondes 
+    
+    //Affichage matrice finale séquentielle
+    printf("Matrice finale séquentielle: \n");
+    if(np%2 == 0) print_matrix1(nb_col, nb_ligne, matrix);
+    else          print_matrix0(nb_col, nb_ligne, matrix);
+  }
+
+
+  /************************PARALLELE*****************************/
+  //Initialisation de la matrice
+  init_matrix(nb_col, nb_ligne, matrix);
+  if(rank == 0){
+    //Affichage de la matrice initiale
+    printf("Matrice initiale parallèle: \n");
+    print_matrix0(nb_col, nb_ligne, matrix);
+  }
+
+  // Debut du chronometre
+  gettimeofday (&tp2, NULL); 
+  timeStart2 = (double) (tp2.tv_sec) + (double) (tp2.tv_usec) / 1e6;
+  
+  //Traitement parallel
+  if (rank == 0)  mastercode (nb_col, nb_ligne, np, matrix);
+  else            slavecode (td, h);
+
+  // Fin du chronometre
+  gettimeofday (&tp2, NULL); 
+  timeEnd2 = (double) (tp2.tv_sec) + (double) (tp2.tv_usec) / 1e6;
+  Texec2 = timeEnd2 - timeStart2;
+
+  //Affichage matrice finale séquentielle
+  if(rank == 0){
+    printf("Matrice finale parallele: \n");
+    if(np%2 == 0) print_matrix1(nb_col, nb_ligne, matrix);
+    else          print_matrix0(nb_col, nb_ligne, matrix);
+  }
+
+  if (rank == 0)  printf("temps dexécution séquentiel : %f, temps dexécution parallel : %f, accélération : %f\n", Texec1, Texec2, Texec1/Texec2);
+
+  MPI_Finalize ();
+  return 0;
 }
 
-void mastercode (int nb_col,int nb_ligne, int np)
+void mastercode (int nb_col,int nb_ligne, int np, double matrix[nb_ligne][nb_col][2])
 {
-  int i=0, j=1, ii, jj, a=1, nprocs, rank=1, task[7], mat0=0, mat1=1;
-  double answer[3];
+  int i=1, j=1, ii, jj, a=1, nprocs, rank=1, mat0=0, mat1=1, answers_to_receive, received_answers=0, send_answers=0, answers_to_send;
+  double answer[3], task[7];
   MPI_Status status;
-  int answers_to_receive, received_answers;
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+  answers_to_receive = answers_to_send = nb_ligne*nb_col-2*nb_ligne-2*nb_col+4;
 
-   /*Initialisation de la matrice*/
-    double matrix[nb_ligne][nb_col][2];
-    for (i = 0; i < nb_ligne; i++) {
-        for (j = 0; j < nb_col; j++){
-            matrix[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
-            matrix[i][j][1] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
-        }
-    }
-
-    answers_to_receive = nb_ligne*nb_col-2*nb_ligne-2*nb_col+4;
-    received_answers = 0;
-
-    /* send tasks to slaves */
-    i=1;
-    j=1;
+  while(a <= np){
+    i=j=1;
     while(i<nb_ligne-1){
       while(j<nb_col-1){
-        task[0] = matrix[i][j][0];
-        task[1] = matrix[i+1][j][0];
-        task[2] = matrix[i-1][j][0];
-        task[3] = matrix[i][j+1][0];
-        task[4] = matrix[i][j-1][0];
+        task[0] = matrix[i][j][mat0];
+        task[1] = matrix[i+1][j][mat0];
+        task[2] = matrix[i-1][j][mat0];
+        task[3] = matrix[i][j+1][mat0];
+        task[4] = matrix[i][j-1][mat0];
         task[5] = i;
         task[6] = j;
         MPI_Send (&task[0], 7, MPI_DOUBLE, rank%(nprocs-1)+1, 1, MPI_COMM_WORLD);
-        //printf("Envoi1 cellule %d %d à rank %d\n",i, j, rank%(nprocs-1)+1);
-        if(rank == nprocs) break;
+        send_answers++;
+        fflush(stdout);
+        if(send_answers == nprocs-1) break;
         j++;
         rank++;
       }
-      if(rank == nprocs) break;
+      if(send_answers == nprocs-1) break;
       i++;
       j = 1;
     }
-    //get next cellule
-    if(j == nb_col-2){
+    if(j >= nb_col-2){
       i++;
       j = 1;
     }
-    else{
-      j++;
-    }
+    else  j++;
+    while (received_answers < answers_to_receive){
+      MPI_Recv (&answer[0], 3, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+      fflush(stdout);
+      ii = (int)(answer[1]);
+      jj = (int)(answer[2]);
+      matrix[ii][jj][mat1] = answer[0];
+      received_answers++;
 
-    while(a <= np){
-      while (received_answers < answers_to_receive){
-          /* wait for an answer from a slave. */
-        MPI_Recv (&answer[0], 3, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
-        //printf("Master recoit de slave %d valeur %lld pour cellule %lld %lld\n", status.MPI_SOURCE, answer[0], answer[1], answer[2]);
-        ii = (int)(answer[1]);
-        jj = (int)(answer[2]);
-        matrix[ii][jj][mat1] = answer[0];
-        received_answers++;       /* and the number of received answers */
-
+      if(send_answers < answers_to_send){
         task[0] = matrix[i][j][mat0];
         task[1] = matrix[i+1][j][mat0];
         task[2] = matrix[i-1][j][mat0];
@@ -122,79 +154,67 @@ void mastercode (int nb_col,int nb_ligne, int np)
         task[5] = i;
         task[6] = j;
         MPI_Send (&task[0], 7, MPI_DOUBLE, status.MPI_SOURCE, 1, MPI_COMM_WORLD);
-        //printf("Envoi2 cellule %d %d à slave %d\n",i, j, rank%(nprocs-1)+1);
-        if(j == nb_col-1){
+        send_answers++;
+        if(j >= nb_col-2){
           i++;
           j = 1;
         }
-        else{
-          j++;
-        }
+        else  j++;
       }
-      printf("Matrice obtenue pour np = %d: \n", a);
-        for (i = 0; i < nb_ligne; i++) {
-            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][mat1]);
-            printf("\n");
-        }
-      received_answers = 0;
-      i = 1;
-      j = 1;
-      a++;
-      if(mat0 == 0) mat0 = 1;
-      else          mat0 = 0;
-      if(mat1 == 0) mat1 = 1;
-      else          mat1 = 0;
     }
-
-    //Affichage de la matrice de fin
-    if(np%2 == 0){
-        printf("Matrice obtenue 1: \n");
-        for (i = 0; i < nb_ligne; i++) {
-            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][1]);
-                printf("\n");
-        }
-    }
-    else{
-        printf("Matrice obtenue 0: \n");
-        for (i = 0; i < nb_ligne; i++) {
-            for (j = 0; j < nb_col; j++)     printf("%.2f    ", matrix[i][j][0]);
-                printf("\n");
-        }
-    }
-    printf("FIN MASTER\n");
-
-//Now master sends a message to the slaves to signify that they should end the calculations. We use a special tag for that:
-
-  /*counts = (int*) malloc(sizeof(int)*(nprocs-1));
-  for (who = 1; who < nprocs; who++)
-    {
-      MPI_Send (&task[0], 1, MPI_INT, who, 2, MPI_COMM_WORLD);
-      MPI_Recv (&counts[who-1], 1, MPI_INT, who, 7, MPI_COMM_WORLD, &status);
-    }
-
-  for (i = 1; i < nprocs; i++)
-    {
-      printf ("%6d %8d\n", i, counts[i-1]);
-    }*/
+    fflush(stdout);
+    received_answers = 0;
+    send_answers = 0;
+    a++;
+    if(mat0 == 0) mat0 = 1;
+    else          mat0 = 0;
+    if(mat1 == 0) mat1 = 1;
+    else          mat1 = 0;
+  }
+  //Envoi message de fin
+  for (i = 1; i < nprocs; i++)  MPI_Send (&task[0], 1, MPI_INT, i, 0, MPI_COMM_WORLD);
 }
 
 void slavecode (double td, double h)
 {
-  int rank;
-  double answer[3];
-  int task[5];
+  int rank, tag=1;
+  double answer[3], task[7];
   MPI_Status status;
 
   MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-  /* slave first enters 'waiting for message' state*/
-  while(1){
+  while(tag == 1){
     MPI_Recv (&task[0], 7, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-    //printf("Slave %d recoit %d pour cellule %d %d\n", rank, task[0], task[5], task[6]);
+    tag = status.MPI_TAG;
     usleep(5);
-    answer[0] = ((1-(4*td)/(h*h))*task[0])+((td/(h*h))*(task[1]+task[2]+task[3]+task[4]));    
+    answer[0] = ((1-(4*td)/(h*h))*task[0])+((td/(h*h))*(task[1]+task[2]+task[3]+task[4]));
     answer[1] = task[5];
     answer[2] = task[6];
     MPI_Send (&answer[0], 3, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
-    //printf("Slave %d envoie %lld pour cellule %lld %lld\n", rank, answer[0], answer[1], answer[2]);
+  }
+}
+
+void init_matrix(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]){
+  int i, j;
+  for (i = 0; i < nb_ligne; i++) {
+    for (j = 0; j < nb_col; j++){
+      matrix[i][j][0] = i*(nb_ligne-i-1)*j*(nb_col-j-1);
+      matrix[i][j][1] = 0;
+    }
+  }
+}
+
+void print_matrix0(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]){
+  int i, j;
+  for (i = 0; i < nb_ligne; i++) {
+    for (j = 0; j < nb_col; j++)  printf("%.2f    ", matrix[i][j][0]);
+    printf("\n");
+  }
+}
+
+void print_matrix1(int nb_col,int nb_ligne, double matrix[nb_ligne][nb_col][2]){
+  int i, j;
+  for (i = 0; i < nb_ligne; i++) {
+    for (j = 0; j < nb_col; j++)  printf("%.2f    ", matrix[i][j][1]);
+    printf("\n");
   }
 }
