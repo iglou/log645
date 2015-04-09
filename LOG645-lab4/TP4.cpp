@@ -67,6 +67,8 @@ shrBOOL bNoPrompt = shrFALSE;
 // *********************************************************************
 void VectorAddHost(const float* pfData1, const float* pfData2, float* pfResult, int iNumElements);
 void Cleanup(int argc, char **argv, int iExitCode);
+void DoSeq(int nb_col, int nb_ligne, int nb_iteration, float h, float td);
+
 
 // Main function 
 // *********************************************************************
@@ -79,6 +81,14 @@ int main(int argc, char **argv)
 	float td = atof(argv[4]);
 	float h = atof(argv[5]);
 
+
+
+	///////////////////////////////
+	//SEQ
+	//////////////////////////////
+	DoSeq(nb_col, nb_ligne, np, h, td);
+
+
 	int iNumElements = nb_ligne * nb_ligne;//nb_ligne*nb_col - 2 * nb_ligne - 2 * nb_col + 4;
 
 	//float **matrix;
@@ -90,15 +100,15 @@ int main(int argc, char **argv)
 	// start logs 
 	cExecutableName = argv[0];
 	shrSetLogFileName("oclVectorAdd.txt");
-	shrLog("%s Starting...\n\n# of float elements per Array \t= %i\n", argv[0], iNumElements);
+	//shrLog("%s Starting...\n\n# of float elements per Array \t= %i\n", argv[0], iNumElements);
 
 	// set and log Global and Local work size dimensions
 	szLocalWorkSize = 512;//CL_KERNEL_WORK_GROUP_SIZE;
 	szGlobalWorkSize = shrRoundUp((int)szLocalWorkSize, iNumElements);  // rounded up to the nearest multiple of the LocalWorkSize
-	shrLog("Global Work Size \t\t= %u\nLocal Work Size \t\t= %u\n# of Work Groups \t\t= %u\n\n", szGlobalWorkSize, szLocalWorkSize, (szGlobalWorkSize % szLocalWorkSize + szGlobalWorkSize / szLocalWorkSize));
+	//shrLog("Global Work Size \t\t= %u\nLocal Work Size \t\t= %u\n# of Work Groups \t\t= %u\n\n", szGlobalWorkSize, szLocalWorkSize, (szGlobalWorkSize % szLocalWorkSize + szGlobalWorkSize / szLocalWorkSize));
 
 	// Allocate and initialize host arrays 
-	shrLog("Allocate and Init Host Mem...\n");
+	//shrLog("Allocate and Init Host Mem...\n");
 	//matrix = (void *)malloc(sizeof(cl_float)* (nb_ligne*nb_col));
 	matrix_line = (float *)malloc(sizeof(cl_float)* (nb_ligne*nb_col * 2));
 	matrix_sortie = (float *)malloc(sizeof(cl_float)* (nb_ligne*nb_col * 2));
@@ -111,7 +121,7 @@ int main(int argc, char **argv)
 			matrix_sortie[i + nb_col*j] = 0;
 		}
 	}
-	printf("Matrix initial \n");
+	printf("Matrix initial PARRALLEL\n");
 	for (i = 0; i < nb_ligne; i++) {
 		for (j = 0; j < nb_col; j++){
 				printf("%0.2f \t", matrix_line[i + nb_col*j]);
@@ -119,18 +129,18 @@ int main(int argc, char **argv)
 		printf("\n");
 	}
 
-	printf("Matrix initial \n");
+	/*printf("Matrix initial PARRALLEL\n");
 	for (i = 0; i < nb_ligne; i++) {
 		for (j = 0; j < nb_col; j++){
 			printf("%0.2f \t", matrix_sortie[i + nb_col*j]);
 		}
 		printf("\n");
-	}
+	} */
 
 	//Get an OpenCL platform : clGetPlatformIDs
 	ciErr1 = clGetPlatformIDs(1, &cpPlatform, NULL);
 
-	shrLog("clGetPlatformID...\n");
+	//shrLog("clGetPlatformID...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clGetPlatformID, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -139,7 +149,7 @@ int main(int argc, char **argv)
 
 	//Get the devices : clGetDeviceIDs
 	ciErr1 = clGetDeviceIDs(cpPlatform, CL_DEVICE_TYPE_GPU, 1, &cdDevice, NULL);
-	shrLog("clGetDeviceIDs...\n");
+	//shrLog("clGetDeviceIDs...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clGetDeviceIDs, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -148,7 +158,7 @@ int main(int argc, char **argv)
 
 	//Create the context : clCreateContext
 	cxGPUContext = clCreateContext(0, 1, &cdDevice, NULL, NULL, &ciErr1);
-	shrLog("clCreateContext...\n");
+	//shrLog("clCreateContext...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clCreateContext, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -157,7 +167,7 @@ int main(int argc, char **argv)
 
 	// Create a command-queue : clCreateCommandQueue
 	cqCommandQueue = clCreateCommandQueue(cxGPUContext, cdDevice, 0, &ciErr1);
-	shrLog("clCreateCommandQueue...\n");
+	//shrLog("clCreateCommandQueue...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clCreateCommandQueue, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -169,7 +179,7 @@ int main(int argc, char **argv)
 	ciErr1 |= ciErr2;
 	cmDevDst = clCreateBuffer(cxGPUContext, CL_MEM_WRITE_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
 	ciErr1 |= ciErr2;
-	shrLog("clCreateBuffer...\n");
+	//shrLog("clCreateBuffer...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clCreateBuffer, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -177,13 +187,13 @@ int main(int argc, char **argv)
 	}
 
 	// Read the OpenCL kernel in from source file
-	shrLog("oclLoadProgSource (%s)...\n", cSourceFile);
+	//shrLog("oclLoadProgSource (%s)...\n", cSourceFile);
 	cPathAndName = shrFindFilePath(cSourceFile, argv[0]);
 	cSourceCL = oclLoadProgSource(cPathAndName, "", &szKernelLength);
 
 	// Create the program : clCreateProgramWithSource
 	cpProgram = clCreateProgramWithSource(cxGPUContext, 1, (const char **)&cSourceCL, &szKernelLength, &ciErr1);
-	shrLog("clCreateProgramWithSource...\n");
+	//shrLog("clCreateProgramWithSource...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clCreateProgramWithSource, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -197,7 +207,7 @@ int main(int argc, char **argv)
 	char* flags = "-cl-fast-relaxed-math";
 #endif
 	ciErr1 = clBuildProgram(cpProgram, 0, NULL, NULL, NULL, NULL);
-	shrLog("clBuildProgram...\n");
+	//shrLog("clBuildProgram...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		if (ciErr1 == CL_BUILD_PROGRAM_FAILURE) {
@@ -222,7 +232,7 @@ int main(int argc, char **argv)
 
 	// Create the kernel : clCreateKernel
 	ckKernel = clCreateKernel(cpProgram, "VectorAdd", &ciErr1);
-	shrLog("clCreateKernel (VectorAdd)...\n");
+	//shrLog("clCreateKernel (VectorAdd)...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clCreateKernel, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -237,7 +247,7 @@ int main(int argc, char **argv)
 	ciErr1 |= clSetKernelArg(ckKernel, 4, sizeof(cl_float), (void*)&td);
 	ciErr1 |= clSetKernelArg(ckKernel, 5, sizeof(cl_mem), (void*)&cmDevDst);
 	ciErr1 |= clSetKernelArg(ckKernel, 6, sizeof(cl_int), (void*)&iNumElements);
-	shrLog("clSetKernelArg 0 - 8...\n\n");
+	//shrLog("clSetKernelArg 0 - 8...\n\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
 		shrLog("Error in clSetKernelArg, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
@@ -253,7 +263,7 @@ int main(int argc, char **argv)
 	double total_t;
 
 	start_t = clock();
-	printf("Starting of the program, start_t = %ld\n", start_t);
+	printf("Starting of the program PARRALLE, start_t = %ld\n", start_t);
 
 
 	for (int x = 1; x < np; x++){
@@ -281,24 +291,52 @@ int main(int argc, char **argv)
 		{
 			ciErr1 = clEnqueueReadBuffer(cqCommandQueue, cmDevDst, CL_TRUE, 0, sizeof(cl_float)* iNumElements, matrix_line, 0, NULL, NULL);
 		}
+
+		/*printf("Matrix initial PARRALLEL\n");
+		for (i = 0; i < nb_ligne; i++) {
+			for (j = 0; j < nb_col; j++){
+				if (x % 2 == 1)
+				{
+					printf("%0.2f \t", matrix_sortie[i + nb_col*j]);
+				}
+				else
+				{
+					printf("%0.2f \t", matrix_line[i + nb_col*j]);
+				}
+			}
+			printf("\n");
+		} */
+		//printf("\n");
 	}
 
-	printf("Going to scan a big loop, start_t = %ld\n", start_t);
 	end_t = clock();
-	printf("End of the big loop, end_t = %ld\n", end_t);
-
 	total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
-	printf("Total time taken by CPU: %f\n", total_t);
-	printf("Exiting of the program...\n");
+	printf("Total time taken by CPU FOR PARRALLE: %f\n", total_t);
+
+	printf("Matrix final PARRALLEL\n");
+	for (i = 0; i < nb_ligne; i++) {
+		for (j = 0; j < nb_col; j++){
+			if (np % 2 == 1)
+			{
+				printf("%0.2f \t", matrix_sortie[i + nb_col*j]);
+			}
+			else
+			{
+				printf("%0.2f \t", matrix_line[i + nb_col*j]);
+			}
+		}
+		printf("\n");
+	}
 	//--------------------------------------------------------
 
 	// Compute and compare results for golden-host and report errors and pass/fail
 	//shrLog("Comparing against Host/C++ computation...\n\n");
 	//VectorAddHost((const float)matrix_line, (const float)B, (float*)Golden, iNumElements);
-	shrBOOL bMatch = shrComparefet((const float*)Golden, (const float*)dst, (unsigned int)iNumElements, 0.0f, 0);
+	//shrBOOL bMatch = shrComparefet((const float*)Golden, (const float*)dst, (unsigned int)iNumElements, 0.0f, 0);
 
+	getchar();
 	// Cleanup and leave
-	Cleanup(argc, argv, (bMatch == shrTRUE) ? EXIT_SUCCESS : EXIT_FAILURE);
+	//Cleanup(argc, argv, (bMatch == shrTRUE) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 void Cleanup(int argc, char **argv, int iExitCode)
@@ -335,5 +373,74 @@ void VectorAddHost(const float* pfData1, const float* pfData2, float* pfResult, 
 	for (i = 0; i < iNumElements; i++)
 	{
 		pfResult[i] = pfData1[i] + pfData2[i];
+	}
+}
+
+void DoSeq(int nb_col, int nb_ligne, int nb_iteration, float h, float td){
+
+	const int X = nb_ligne;
+	const int Y = nb_col;
+	const int Z = 2;
+
+	double ***matrix = new double**[X];
+	for (int i = 0; i<X; i++){
+		matrix[i] = new double*[Y];
+		for (int j = 0; j<Y; j++){
+			matrix[i][j] = new double[Z];
+			for (int k = 0; k<Z; k++){
+				matrix[i][j][k] = 0;
+			}
+		}
+	}
+
+	int i, j, x;
+	for (i = 0; i < nb_ligne; i++) {
+		for (j = 0; j < nb_col; j++){
+			matrix[i][j][0] = i*(nb_ligne - i - 1)*j*(nb_col - j - 1);
+			matrix[i][j][1] = 0;
+		}
+	}
+
+	//Affichage de la matrice initiale
+	printf("Matrice initiale séquentielle: \n");
+	for (i = 0; i < nb_ligne; i++) {
+		for (j = 0; j < nb_col; j++)  printf("%.2f    ", matrix[i][j][0]);
+		printf("\n");
+	}
+
+	clock_t start_t, end_t;
+	double total_t;
+
+	start_t = clock();
+	printf("Starting of the program SEQUENTIELLE, start_t = %ld\n", start_t);
+
+	//Calcul séquentiel
+	for (x = 1; x < nb_iteration; x++){
+		for (i = 1; i < nb_ligne - 1; i++){
+			for (j = 1; j < nb_col - 1; j++){
+				if (x % 2 == 0)  matrix[i][j][0] = ((1 - (4 * td) / (h*h))*matrix[i][j][1]) + ((td / (h*h))*(matrix[i - 1][j][1] + matrix[i + 1][j][1] + matrix[i][j - 1][1] + matrix[i][j + 1][1]));
+				else          matrix[i][j][1] = ((1 - (4 * td) / (h*h))*matrix[i][j][0]) + ((td / (h*h))*(matrix[i - 1][j][0] + matrix[i + 1][j][0] + matrix[i][j - 1][0] + matrix[i][j + 1][0]));
+			}
+		}
+	}
+	end_t = clock();
+
+	total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+	printf("Total time taken by CPU SEQUENTIELLE: %f\n", total_t);
+	printf("Exiting of the program...\n");
+
+	//Affichage matrice finale séquentielle
+	printf("Matrice finale séquentielle: \n");
+	if (nb_iteration % 2 == 0){
+		for (i = 0; i < nb_ligne; i++) {
+			for (j = 0; j < nb_col; j++)  printf("%.2f    ", matrix[i][j][1]);
+			printf("\n");
+		}
+	}
+	else {
+		for (i = 0; i < nb_ligne; i++) {
+			for (j = 0; j < nb_col; j++)  printf("%.2f    ", matrix[i][j][0]);
+			printf("\n");
+		}
 	}
 }
