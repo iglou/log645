@@ -10,7 +10,7 @@
  */
  
  // OpenCL Kernel Function for element by element vector addition
-__kernel void VectorAdd(__global float* matrix, __global int nb_col, __global int nb_ligne, __global float h, __global float td,  int iNumElements)
+__kernel void VectorAdd(__global float* matrix, int nb_col, int nb_ligne, float h, float td, __global float* matrix_sortie,  int iNumElements)
 {
     // get index into global data array
     int iGID = get_global_id(0);
@@ -22,5 +22,12 @@ __kernel void VectorAdd(__global float* matrix, __global int nb_col, __global in
     }
     
     // add the vector elements
-	matrix[iGID+1+nb_col] = ((1-(4*td)/(h*h))*matrix[iGID+1+nb_col])+((td/(h*h))*(matrix[iGID+2+nb_col]+matrix[iGID+nb_col]+matrix[iGID+1+2*nb_col]+matrix[iGID+1]));
+	int x, y;
+	x = iGID % nb_col;
+	y = iGID / nb_col;
+	if (x == 0 || x == nb_col-1 || y == 0 || y == nb_ligne-1)
+	{
+		return;
+	}
+	matrix_sortie[iGID] = ((1-(4*td)/(h*h))*matrix[iGID])+((td/(h*h))*(matrix[iGID+nb_col]+matrix[iGID-nb_col]+matrix[iGID+1]+matrix[iGID-1]));
 }

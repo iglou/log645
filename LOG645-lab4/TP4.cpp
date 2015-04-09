@@ -34,6 +34,7 @@ const char* cSourceFile = "VectorAdd.cl";
 // *********************************************************************
 void **matrix, *dst;	        // Host buffers for OpenCL test
 float *matrix_line;
+float *matrix_sortie;
 void* Golden;                   // Host buffer for host golden processing cross check
 
 // OpenCL Vars
@@ -78,7 +79,7 @@ int main(int argc, char **argv)
 	float td = atof(argv[4]);
 	float h = atof(argv[5]);
 
-	int iNumElements = nb_ligne*nb_col - 2 * nb_ligne - 2 * nb_col + 4;
+	int iNumElements = nb_ligne * nb_ligne;//nb_ligne*nb_col - 2 * nb_ligne - 2 * nb_col + 4;
 
 	//float **matrix;
 	//float *matrix_line;
@@ -92,7 +93,7 @@ int main(int argc, char **argv)
 	shrLog("%s Starting...\n\n# of float elements per Array \t= %i\n", argv[0], iNumElements);
 
 	// set and log Global and Local work size dimensions
-	szLocalWorkSize = CL_KERNEL_WORK_GROUP_SIZE;
+	szLocalWorkSize = 512;//CL_KERNEL_WORK_GROUP_SIZE;
 	szGlobalWorkSize = shrRoundUp((int)szLocalWorkSize, iNumElements);  // rounded up to the nearest multiple of the LocalWorkSize
 	shrLog("Global Work Size \t\t= %u\nLocal Work Size \t\t= %u\n# of Work Groups \t\t= %u\n\n", szGlobalWorkSize, szLocalWorkSize, (szGlobalWorkSize % szLocalWorkSize + szGlobalWorkSize / szLocalWorkSize));
 
@@ -100,22 +101,31 @@ int main(int argc, char **argv)
 	shrLog("Allocate and Init Host Mem...\n");
 	//matrix = (void *)malloc(sizeof(cl_float)* (nb_ligne*nb_col));
 	matrix_line = (float *)malloc(sizeof(cl_float)* (nb_ligne*nb_col * 2));
+	matrix_sortie = (float *)malloc(sizeof(cl_float)* (nb_ligne*nb_col * 2));
 
 	int i, j;
 	for (i = 0; i < nb_ligne; i++) {
 		for (j = 0; j < nb_col; j++){
 			//matrix[i][j] = i*(nb_ligne - i - 1)*j*(nb_col - j - 1);
 			matrix_line[i + nb_col*j] = i*(nb_ligne - i - 1)*j*(nb_col - j - 1);
+			matrix_sortie[i + nb_col*j] = 0;
 		}
 	}
+	printf("Matrix initial \n");
+	for (i = 0; i < nb_ligne; i++) {
+		for (j = 0; j < nb_col; j++){
+				printf("%0.2f \t", matrix_line[i + nb_col*j]);
+		}
+		printf("\n");
+	}
 
-
-	//srcA = (void *)malloc(sizeof(cl_float)* szGlobalWorkSize);
-	//srcB = (void *)malloc(sizeof(cl_float)* szGlobalWorkSize);
-	dst = (void *)malloc(sizeof(cl_float)* szGlobalWorkSize);
-	Golden = (void *)malloc(sizeof(cl_float)* iNumElements);
-	//shrFillArray((float*)srcA, iNumElements);
-	//shrFillArray((float*)srcB, iNumElements);
+	printf("Matrix initial \n");
+	for (i = 0; i < nb_ligne; i++) {
+		for (j = 0; j < nb_col; j++){
+			printf("%0.2f \t", matrix_sortie[i + nb_col*j]);
+		}
+		printf("\n");
+	}
 
 	//Get an OpenCL platform : clGetPlatformIDs
 	ciErr1 = clGetPlatformIDs(1, &cpPlatform, NULL);
@@ -156,10 +166,6 @@ int main(int argc, char **argv)
 
 	// Allocate the OpenCL buffer memory objects for source and result on the device GMEM : clCreateBuffer
 	cmDevA = clCreateBuffer(cxGPUContext, CL_MEM_READ_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr1);
-	cmDevB = clCreateBuffer(cxGPUContext, CL_MEM_READ_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
-	cmDevC = clCreateBuffer(cxGPUContext, CL_MEM_READ_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
-	cmDevH = clCreateBuffer(cxGPUContext, CL_MEM_READ_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
-	cmDevTD = clCreateBuffer(cxGPUContext, CL_MEM_READ_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
 	ciErr1 |= ciErr2;
 	cmDevDst = clCreateBuffer(cxGPUContext, CL_MEM_WRITE_ONLY, sizeof(cl_float)* szGlobalWorkSize, NULL, &ciErr2);
 	ciErr1 |= ciErr2;
@@ -194,6 +200,22 @@ int main(int argc, char **argv)
 	shrLog("clBuildProgram...\n");
 	if (ciErr1 != CL_SUCCESS)
 	{
+		if (ciErr1 == CL_BUILD_PROGRAM_FAILURE) {
+			// Determine the size of the log
+			size_t log_size;
+			clGetProgramBuildInfo(cpProgram, cdDevice, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+
+			// Allocate memory for the log
+			char *log = (char *)malloc(log_size);
+
+			// Get the log
+			clGetProgramBuildInfo(cpProgram, cdDevice, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+
+			// Print the log
+			printf("%s\n", log);
+		}
+
+
 		shrLog("Error in clBuildProgram, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
 		Cleanup(argc, argv, EXIT_FAILURE);
 	}
@@ -209,10 +231,10 @@ int main(int argc, char **argv)
 
 	// Set the Argument values : clSetKernelArg
 	ciErr1 = clSetKernelArg(ckKernel, 0, sizeof(cl_mem), (void*)&cmDevA);
-	ciErr1 |= clSetKernelArg(ckKernel, 1, sizeof(cl_mem), (void*)&cmDevB);
-	ciErr1 |= clSetKernelArg(ckKernel, 2, sizeof(cl_mem), (void*)&cmDevC);
-	ciErr1 |= clSetKernelArg(ckKernel, 3, sizeof(cl_mem), (void*)&cmDevH);
-	ciErr1 |= clSetKernelArg(ckKernel, 4, sizeof(cl_mem), (void*)&cmDevTD);
+	ciErr1 |= clSetKernelArg(ckKernel, 1, sizeof(cl_int), (void*)&nb_col);
+	ciErr1 |= clSetKernelArg(ckKernel, 2, sizeof(cl_int), (void*)&nb_ligne);
+	ciErr1 |= clSetKernelArg(ckKernel, 3, sizeof(cl_float), (void*)&h);
+	ciErr1 |= clSetKernelArg(ckKernel, 4, sizeof(cl_float), (void*)&td);
 	ciErr1 |= clSetKernelArg(ckKernel, 5, sizeof(cl_mem), (void*)&cmDevDst);
 	ciErr1 |= clSetKernelArg(ckKernel, 6, sizeof(cl_int), (void*)&iNumElements);
 	shrLog("clSetKernelArg 0 - 8...\n\n");
@@ -227,40 +249,47 @@ int main(int argc, char **argv)
 
 	// Asynchronous write of data to GPU device : clEnqueueWriteBuffer
 
-	for (int n = 1; i < n; n++){
+	clock_t start_t, end_t;
+	double total_t;
 
-		ciErr1 = clEnqueueWriteBuffer(cqCommandQueue, cmDevA, CL_FALSE, 0, sizeof(cl_float)* szGlobalWorkSize, matrix_line, 0, NULL, NULL);
-		//ciErr1 |= clEnqueueWriteBuffer(cqCommandQueue, cmDevB, CL_FALSE, 0, sizeof(cl_float)* szGlobalWorkSize, nb_col, 0, NULL, NULL);
-		//ciErr1 |= clEnqueueWriteBuffer(cqCommandQueue, cmDevC, CL_FALSE, 0, sizeof(cl_float)* szGlobalWorkSize, nb_ligne, 0, NULL, NULL);
-		//ciErr1 |= clEnqueueWriteBuffer(cqCommandQueue, cmDevH, CL_FALSE, 0, sizeof(cl_float)* szGlobalWorkSize, h, 0, NULL, NULL);
-		//ciErr1 |= clEnqueueWriteBuffer(cqCommandQueue, cmDevTD, CL_FALSE, 0, sizeof(cl_float)* szGlobalWorkSize, td, 0, NULL, NULL);
+	start_t = clock();
+	printf("Starting of the program, start_t = %ld\n", start_t);
 
-		shrLog("clEnqueueWriteBuffer (SrcA and SrcB)...\n");
-		if (ciErr1 != CL_SUCCESS)
+
+	for (int x = 1; x < np; x++){
+
+		if (x % 2 == 1)
 		{
-			shrLog("Error in clEnqueueWriteBuffer, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
-			Cleanup(argc, argv, EXIT_FAILURE);
+			ciErr1 = clEnqueueWriteBuffer(cqCommandQueue, cmDevA, CL_FALSE, 0, sizeof(cl_float)* iNumElements, matrix_line, 0, NULL, NULL);
+			ciErr1 = clEnqueueWriteBuffer(cqCommandQueue, cmDevDst, CL_FALSE, 0, sizeof(cl_float)* iNumElements, matrix_sortie, 0, NULL, NULL);
+		}
+		else
+		{
+			ciErr1 = clEnqueueWriteBuffer(cqCommandQueue, cmDevA, CL_FALSE, 0, sizeof(cl_float)* iNumElements, matrix_sortie, 0, NULL, NULL);
+			ciErr1 = clEnqueueWriteBuffer(cqCommandQueue, cmDevDst, CL_FALSE, 0, sizeof(cl_float)* iNumElements, matrix_line, 0, NULL, NULL);
 		}
 
 		// Launch kernel : clEnqueueNDRangeKernel
 		ciErr1 = clEnqueueNDRangeKernel(cqCommandQueue, ckKernel, 1, NULL, &szGlobalWorkSize, &szLocalWorkSize, 0, NULL, NULL);
-		shrLog("clEnqueueNDRangeKernel (VectorAdd)...\n");
-		if (ciErr1 != CL_SUCCESS)
-		{
-			shrLog("Error in clEnqueueNDRangeKernel, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
-			Cleanup(argc, argv, EXIT_FAILURE);
-		}
 
 		// Synchronous/blocking read of results, and check accumulated errors : clEnqueueReadBuffer
-		ciErr1 = clEnqueueReadBuffer(cqCommandQueue, cmDevDst, CL_TRUE, 0, sizeof(cl_float)* szGlobalWorkSize, dst, 0, NULL, NULL);
-		shrLog("clEnqueueReadBuffer (Dst)...\n\n");
-		if (ciErr1 != CL_SUCCESS)
+		if (x % 2 == 1)
 		{
-			shrLog("Error in clEnqueueReadBuffer, Line %u in file %s !!!\n\n", __LINE__, __FILE__);
-			Cleanup(argc, argv, EXIT_FAILURE);
+			ciErr1 = clEnqueueReadBuffer(cqCommandQueue, cmDevDst, CL_TRUE, 0, sizeof(cl_float)* iNumElements, matrix_sortie, 0, NULL, NULL);
 		}
-
+		else
+		{
+			ciErr1 = clEnqueueReadBuffer(cqCommandQueue, cmDevDst, CL_TRUE, 0, sizeof(cl_float)* iNumElements, matrix_line, 0, NULL, NULL);
+		}
 	}
+
+	printf("Going to scan a big loop, start_t = %ld\n", start_t);
+	end_t = clock();
+	printf("End of the big loop, end_t = %ld\n", end_t);
+
+	total_t = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+	printf("Total time taken by CPU: %f\n", total_t);
+	printf("Exiting of the program...\n");
 	//--------------------------------------------------------
 
 	// Compute and compare results for golden-host and report errors and pass/fail
